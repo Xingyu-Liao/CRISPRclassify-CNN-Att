@@ -55,10 +55,10 @@ CRISPRclassify-CNN-Att is a deep learning-based method that utilizes Convolution
 
 ##### Project Structure
 
-CRISPRclassify-CNN-Att/
-├── data/
+CRISPRclassify-CNN-Att
+├── data
 │   ├── repeats_all.csv
-├── source/
+├── source
 │   ├── CNN_Att.py
 │   ├── dataselect.py
 │   ├── repeatsEncoder.py
