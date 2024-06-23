@@ -68,4 +68,3 @@ CRISPRclassify-CNN-Att/
 │   ├── stacking.py
 ├── README.md
 ├── requirements.txt
-└── LICENSE
