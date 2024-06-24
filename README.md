@@ -19,6 +19,7 @@ CRISPRclassify-CNN-Att is a deep learning-based method that utilizes Convolution
 
 - **data/**: Contains data files .
   - `repeats_all.csv`: csv file containing all repeats and their corresponding subtypes.
+  
 - **source/**: Contains all the script files.
   - `CNN_Att.py`: CNN and self-attention mechanism models.
   - `dataselect.py`: selecting datasets.
@@ -27,13 +28,24 @@ CRISPRclassify-CNN-Att is a deep learning-based method that utilizes Convolution
   - `transferlearning.py`: fine-tuning for classifying less abundant subtypes .
   - `typeEncoder.py`: encoding subtypes.
   - `stacking.py`: model stacking.
+  
 - model/:
   - cnn_att_large.pth: pre-trained model-large
+  
   - cnn_att_less.pth：pre-trained model-less
+  
   - CRISPRclassify_CNN_Att.pkl  : stacking model
+  
+    > [!NOTE]
+    >
+    > Due to file size limitations, we have stored the files `cnn_att_large.pth`,`cnn_att_less.pth`,and`CRISPRclassify_CNN_Att.pkl` at the following link: [Google Drive Folder](https://drive.google.com/drive/folders/1G5v5eQX1lXrIqmJpp34Kwi0fw1SqvtLe?usp=sharing).
+  
   - test.py : model testing
+  
   - test.xlsx: test data
+  
 - `README.md`: project description and instructions.
+
 - `requirements.txt`: list of dependencies for the project.
 
 ##### Installation Guide
@@ -99,9 +111,9 @@ CRISPRclassify-CNN-Att/
 │   ├── typeEncoder.py  
 │   ├── stacking.py  
 ├── model/  
-│   ├── cnn_att_large.pth  
-│   ├── cnn_att_less.pth  
-│   ├── CRISPRclassify_CNN_Att.pkl  
+│   ├── cnn_att_large.pth 
+│   ├── cnn_att_less.pth
+│   ├── CRISPRclassify_CNN_Att.pkl
 │   ├── test.py  
 │   ├── test.xlsx  
 ├── README.md  
