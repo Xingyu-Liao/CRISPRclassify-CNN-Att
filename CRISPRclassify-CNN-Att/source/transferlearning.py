@@ -14,6 +14,13 @@ from torch.utils.data import DataLoader, TensorDataset
 import copy
 from sklearn.metrics import classification_report
 from torch.utils.data import ConcatDataset
+import os
+import torch
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+model_dir = os.path.join(project_root, 'model')
+model_path_large = os.path.join(model_dir, 'cnn_att_large.pth')
+model_path_less= os.path.join(model_dir, 'cnn_att_less.pth')
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, X, bio_features,y):
         self.X = X
@@ -63,7 +70,7 @@ def fine_tune_model(model, train_loader, test_loader, num_classes, num_epochs=10
             best_accuracy = accuracy
             best_model_params = copy.deepcopy(model.state_dict())
     model.load_state_dict(best_model_params)
-    torch.save(model.state_dict(), "cnn_att_less.pth")
+    torch.save(model.state_dict(), model_path_less)
 
 def evaluate_model(model, test_loader):
     model.eval()
@@ -107,11 +114,11 @@ bio_feature_dim = 2082
 typeencoder = TypeEncoder(type_selected)
 Y = typeencoder.encode_type_3(0)
 Y_df = pd.DataFrame(Y, columns=['Y'])
-type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A']
-type_selected_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','I-A','IV-A3','I-U']
+type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
+type_selected_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','IV-A3','I-U']
 embedding_dim = 64
 vocab_size = 5
-num_classes = 12
+num_classes = 11
 bio_feature_dim=2082
 seq_length = 48
 class_names = type_selected_small
@@ -120,16 +127,16 @@ train_dataset = MyDataset(x_train,bio_features_train, y_train)
 test_dataset = MyDataset(x_temp, bio_features_test,y_temp)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
-model = CNNClassifier(vocab_size, embedding_dim, 10, seq_length, bio_feature_dim)
-model.load_state_dict(torch.load("cnn_att_large.pth"))
+model = CNNClassifier(vocab_size, embedding_dim, 11, seq_length, bio_feature_dim)
+model.load_state_dict(torch.load(model_path_large))
 model.to(device)
-new_model = CNNClassifier(vocab_size, embedding_dim, 12, seq_length, bio_feature_dim)
+new_model = CNNClassifier(vocab_size, embedding_dim, 11, seq_length, bio_feature_dim)
 state_dict = copy.deepcopy(model.state_dict())
 state_dict.pop("fc_final.weight")
 state_dict.pop("fc_final.bias")
 new_state_dict = {k: v.to(device) for k, v in state_dict.items()}
 new_model.load_state_dict(new_state_dict, strict=False)
-new_model.fc_final = nn.Linear(1024, 12)
+new_model.fc_final = nn.Linear(1024, 11)
 new_model.to(device)
 new_model.fc_final.to(device)
-fine_tune_model(new_model, train_loader, test_loader, num_classes=12)
+fine_tune_model(new_model, train_loader, test_loader, num_classes=11)

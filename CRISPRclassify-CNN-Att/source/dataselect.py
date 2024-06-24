@@ -1,6 +1,12 @@
 import pandas as pd
 from openpyxl import Workbook
 from collections import Counter
+import os
+import pandas as pd
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+csv_path = os.path.join(project_root, 'data', 'repeats_all.csv')
+
 class DataSelect(object):
     def __init__(self):
         
@@ -14,7 +20,7 @@ class DataSelect(object):
                             ]
 
     def read_repeats(self):
-        df = pd.read_csv("repeats_all.csv")
+        df = pd.read_csv(csv_path)
         type_list = df['type'].tolist()
         sequences_list = df['seq'].tolist()
         return type_list,sequences_list
@@ -27,8 +33,8 @@ class DataSelect(object):
         # 筛选
         selected_index = []
         for i in range(len(types_all)):
-            type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A']
-            type_selected_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','I-A','IV-A3','I-U']
+            type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
+            type_selected_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','IV-A3','I-U']
             if type_size == 0:
                 type_selected_final = type_selected_small
             elif type_size ==1:

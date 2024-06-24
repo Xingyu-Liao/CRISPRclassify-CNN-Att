@@ -20,6 +20,13 @@ from collections import Counter
 import math
 from scipy.spatial.distance import euclidean
 from itertools import product
+import os
+import torch
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+model_dir = os.path.join(project_root, 'model')
+model_path = os.path.join(model_dir, 'cnn_att_large.pth')
 
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, X, bio_features,y):
@@ -52,7 +59,7 @@ class CNNTrainer:
         self.device = device
         self.class_names = class_names
         self.best_accuracy = 0.0
-        self.best_model_path = 'cnn_att_large.pth'  
+        self.best_model_path = model_path
     def train(self, train_dataloader, test_dataloader,num_epochs=50 ):
         criterion = nn.CrossEntropyLoss()
         for epoch in range(num_epochs):
@@ -201,12 +208,12 @@ if __name__ == '__main__':
     typeencoder = TypeEncoder(type_selected)
     Y = typeencoder.encode_type_3(1)
     Y_df = pd.DataFrame(Y, columns=['Y'])
-    type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A']
+    type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
     class_names = type_selected_big
 
     embedding_dim = 64
     vocab_size = 5
-    num_classes = 10
+    num_classes = 11
     seq_length = 48
 
     x_train, x_temp, y_train, y_temp,bio_features_train,bio_features_test = train_test_split(X2, Y, bio_features,test_size=0.5,random_state=15)

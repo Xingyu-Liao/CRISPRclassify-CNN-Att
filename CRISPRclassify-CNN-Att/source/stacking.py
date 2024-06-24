@@ -16,6 +16,13 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import cross_val_predict
 import pandas as pd
+import joblib
+import os
+import torch
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+model_dir = os.path.join(project_root, 'model')
+model_path = os.path.join(model_dir, 'CRISPRclassify_CNN_Att.pkl')
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, X, bio_features,y):
         self.X = X
@@ -49,11 +56,22 @@ if __name__ == '__main__':
     repeatencoder = RepeatEncoder(seq_selected)
     X2_small = repeatencoder.repeats_onehot_encoder()
     typeencoder = TypeEncoder(type_selected_small)
-    type_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','I-A','IV-A3','I-U']
+    type_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','IV-A3','I-U']
     Y_small = typeencoder.encode_type_3(0)
     for i in range(len(Y_small)):
-        Y_small[i] = Y_small[i] + 10
-    x_train_small, x_temp_small, y_train_small, y_temp_small,bio_features_train_small,bio_features_test_small = train_test_split(X2_small, Y_small, bio_features_small,test_size=0.5,random_state=15)
+        Y_small[i] = Y_small[i] + 11
+    
+    small_index = list(range(len(X2_small)))
+
+    x_train_small, x_temp_small, y_train_small, y_temp_small,bio_features_train_small,bio_features_test_small,small_index_train,small_index_test = train_test_split(X2_small, Y_small, bio_features_small,small_index,test_size=0.5,random_state=15)
+    repeats_all_test = []
+    subtype_all_test = []
+    for i in small_index_test:
+        repeats_all_test.append(seq_selected[i])
+        subtype_all_test.append(type_selected_small[i])
+
+    
+    
     test_dataset_small = MyDataset(x_temp_small, bio_features_test_small,y_temp_small)
     dataselect = DataSelect()
     seq_selected,type_selected_big = dataselect.count_class_num(1)
@@ -67,18 +85,25 @@ if __name__ == '__main__':
     X2_big = repeatencoder.repeats_onehot_encoder()
     typeencoder = TypeEncoder(type_selected_big)
     Y_big = typeencoder.encode_type_3(1)
-    type_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A']
-    x_train_big, x_temp_big, y_train_big, y_temp_big,bio_features_train_big,bio_features_test_big = train_test_split(X2_big, Y_big, bio_features_big,test_size=0.5,random_state=15)
+    type_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
+    big_index = list(range(len(X2_big)))
+    x_train_big, x_temp_big, y_train_big, y_temp_big,bio_features_train_big,bio_features_test_big,big_index_train,big_index_test = train_test_split(X2_big, Y_big, bio_features_big,big_index,test_size=0.5,random_state=15)
+    for i in big_index_test:
+        repeats_all_test.append(seq_selected[i])
+        subtype_all_test.append(type_selected_big[i])
+    
     test_dataset_big = MyDataset(x_temp_big, bio_features_test_big, y_temp_big)
     concat_dataset = ConcatDataset([test_dataset_big, test_dataset_small])
     test_dataloader = DataLoader(concat_dataset, batch_size=32, shuffle=False)
-    cnn_model_state_dict = torch.load('cnn_att_large.pth')
-    cnn_2_model_state_dict = torch.load('cnn_att_less.pth')
+    model_path_large = os.path.join(model_dir, 'cnn_att_large.pth')
+    model_path_less = os.path.join(model_dir, 'cnn_att_less.pth')
+    cnn_model_state_dict = torch.load(model_path_large)
+    cnn_2_model_state_dict = torch.load(model_path_less)
 
     embedding_dim = 64
     vocab_size = 5
-    num_classes_small = 12
-    num_classes_big = 10
+    num_classes_small = 11
+    num_classes_big = 11
     seq_length = 48
     bio_feature_dim = 2082
 
@@ -107,12 +132,19 @@ if __name__ == '__main__':
     x_temp_combined = np.concatenate((x_temp_big, x_temp_small), axis=0)
     y_temp_combined = np.concatenate((y_temp_big, y_temp_small), axis=0)
     
+    final_index = list(range(len(repeats_all_test)))
+
     bio_features_combined = np.concatenate((bio_features_test_big, bio_features_test_small),axis=0)
 
-    X_train_stacked, X_test_stacked, y_train_stacked, y_test_stacked = train_test_split(
-        np.concatenate((bio_features_combined, new_features), axis=1), y_temp_combined, test_size=0.5)
+    X_train_stacked, X_test_stacked, y_train_stacked, y_test_stacked,final_index_train,final_index_test = train_test_split(
+        np.concatenate((bio_features_combined, new_features), axis=1), y_temp_combined, final_index, test_size=0.5 , random_state = 16)
+    repeats_test = []
+    subtype_test = []
+    for i in final_index_test:
+        repeats_test.append(repeats_all_test[i])
+        subtype_test.append(subtype_all_test[i])
 
-    xgb_meta_model = xgb.XGBClassifier(objective='multi:softprob', num_class=22, max_depth=16)
+    xgb_meta_model = xgb.XGBClassifier(objective='multi:softprob', num_class=22, max_depth=7)
     xgb_meta_model.fit(X_train_stacked, y_train_stacked)
 
     final_predictions = xgb_meta_model.predict(X_test_stacked)
@@ -129,8 +161,10 @@ if __name__ == '__main__':
     print("Recall:", recall)
     print("F1 Score:", f1)
     report = classification_report(y_test_stacked, final_predictions)
+    lines = report.split('\n')
+    filtered_lines = [line for line in lines if 'macro avg' not in line]
+    report = '\n'.join(filtered_lines)
     print(report)
-
     auc_per_class = []
     for class_idx in range(22):
         y_true_class = [1 if label == class_idx else 0 for label in y_test_stacked]
@@ -143,3 +177,5 @@ if __name__ == '__main__':
         y_true_class = [1 if label == class_idx else 0 for label in final_predictions]
         acc_class = accuracy_score(y_true_class, final_predictions_class)
         acc_per_class.append(acc_class)
+    # 保存最终模型
+    joblib.dump(xgb_meta_model, model_path)
