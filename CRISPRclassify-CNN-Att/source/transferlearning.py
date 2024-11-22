@@ -65,12 +65,7 @@ def fine_tune_model(model, train_loader, test_loader, num_classes, num_epochs=10
             optimizer.step()
             running_loss += loss.item()
         print(f"Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}")
-        accuracy = evaluate_model(model, test_loader)
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_model_params = copy.deepcopy(model.state_dict())
-    model.load_state_dict(best_model_params)
-    torch.save(model.state_dict(), model_path_less)
+
 
 def evaluate_model(model, test_loader):
     model.eval()
@@ -88,9 +83,7 @@ def evaluate_model(model, test_loader):
             all_labels.extend(labels.cpu().numpy())
             all_predictions.extend(predicted.cpu().numpy())
     accuracy = (correct / total) * 100
-    print(f"Accuracy on test set: {accuracy}%")
     report = classification_report(all_labels, all_predictions, target_names=[str(i) for i in range(num_classes)])
-    print(report)
     return accuracy
 
 dataselect = DataSelect()
@@ -100,8 +93,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 repeatsencoder = RepeatEncoder(seq_selected)
 seq_filled = repeatsencoder.fill_repeats()
 X2 = seq_filled
-
-# 用四聚体作为特征
 repeatfeature = RepeatFeature()
 repeatfeature.read_data(0)
 X1 = repeatfeature.prepare_data()
@@ -110,15 +101,16 @@ repeatencoder = RepeatEncoder(seq_selected)
 X2 = repeatencoder.repeats_onehot_encoder()
 X1.reset_index(drop=True, inplace=True)
 bio_features = X1
-bio_feature_dim = 2082
+bio_feature_dim = 2082      
 typeencoder = TypeEncoder(type_selected)
 Y = typeencoder.encode_type_3(0)
 Y_df = pd.DataFrame(Y, columns=['Y'])
-type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
-type_selected_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','IV-A3','I-U']
+
+type_selected_big = ['I-A', 'I-B', 'I-C', 'I-D', 'I-E', 'I-F', 'I-G', 'I-U', 'II-A', 'II-C', 'V-A']
+type_selected_small = ['II-B', 'III-C', 'IV-A1', 'IV-A2', 'IV-A3', 'IV-D', 'IV-E', 'V-B1', 'V-B2', 'V-F1', 'V-F2', 'V-F3', 'V-K', 'VI-A',' VI-B1', 'VI-B2', 'VI-C', 'VI-D']
 embedding_dim = 64
 vocab_size = 5
-num_classes = 11
+num_classes = 18
 bio_feature_dim=2082
 seq_length = 48
 class_names = type_selected_small
@@ -136,7 +128,7 @@ state_dict.pop("fc_final.weight")
 state_dict.pop("fc_final.bias")
 new_state_dict = {k: v.to(device) for k, v in state_dict.items()}
 new_model.load_state_dict(new_state_dict, strict=False)
-new_model.fc_final = nn.Linear(1024, 11)
+new_model.fc_final = nn.Linear(1024, 18)
 new_model.to(device)
 new_model.fc_final.to(device)
-fine_tune_model(new_model, train_loader, test_loader, num_classes=11)
+fine_tune_model(new_model, train_loader, test_loader, num_classes=18)

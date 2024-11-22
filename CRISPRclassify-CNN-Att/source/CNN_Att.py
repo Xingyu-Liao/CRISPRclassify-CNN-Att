@@ -41,10 +41,13 @@ class MyDataset(torch.utils.data.Dataset):
         features = self.X[index]
         label = self.y[index]
         bio_feature =  self.bio_features.iloc[index]
+
         features_tensor = torch.tensor(features, dtype=torch.float)
         bio_feature_tensor = torch.tensor(bio_feature, dtype=torch.float)
+
         X_tensor = features_tensor.unsqueeze(0)
         bio_feature_tensor = bio_feature_tensor.unsqueeze(0)
+
         return X_tensor, bio_feature_tensor,torch.tensor(label, dtype=torch.long)
 
     def char_to_index(self, char):
@@ -61,6 +64,23 @@ class CNNTrainer:
         self.best_accuracy = 0.0
         self.best_model_path = model_path
     def train(self, train_dataloader, test_dataloader,num_epochs=50 ):
+        type_counts = {'I-E': 5920, 'I-C': 4675, 'I-B': 3725,  'II-A': 2005, 
+               'I-F': 1502,  'I-G': 1096, 'V-A': 845, 'I-D': 654, 'II-C': 642, 
+               'I-A': 521, 'I-U': 329, 'VI-A': 159, 'V-F': 145, 'V-F1': 141, 'V-K': 135, 
+               'II-B': 122, 'III-C': 111, 'IV-A1': 100, 'VI-B1': 95, 'IV-A3': 90, 'V-F2': 81, 
+               'VI-D': 72, 'V-B1': 67, 'IV-A2': 57, 'VI-B2': 48, 'V-J': 46}
+                # 总样本数
+        total_samples = sum(type_counts.values())
+
+        # 根据类别样本数量计算权重：类别数量的倒数，并且归一化
+        weights = {cls: total_samples / count for cls, count in type_counts.items()}
+
+        # 将权重转换为Tensor
+        class_weights = torch.tensor(list(weights.values()), dtype=torch.float)
+        class_weights = class_weights.to(self.device)
+
+        # 创建加权的交叉熵损失函数
+        # criterion = nn.CrossEntropyLoss(weight=class_weights)
         criterion = nn.CrossEntropyLoss()
         for epoch in range(num_epochs):
             epoch_train_loss = 0.0
@@ -84,8 +104,6 @@ class CNNTrainer:
                 self.optimizer.step()
                 epoch_train_loss += loss.item()
                 _, predicted = torch.max(outputs, 1)
-
-
                 train_correct += (predicted == labels).sum().item()
                 total_train += labels.size(0)
             epoch_train_loss /= len(train_dataloader)
@@ -112,13 +130,6 @@ class CNNTrainer:
             epoch_test_loss /= len(test_dataloader)
             test_accuracy = test_correct / total_test
 
-            if test_accuracy > self.best_accuracy:
-                self.best_accuracy = test_accuracy
-                torch.save(self.model.state_dict(), self.best_model_path)
-                print("Best model saved at:", self.best_model_path)
-            print("--------------------------------")
-            print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {epoch_train_loss:.4f},Test Loss: {epoch_test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}')
-            # 打印每个类别的acc，precision，recall，F1指标
             for i in range(len(self.class_names)):
                 if class_total[i] > 0:
                     acc = class_correct[i] / class_total[i]
@@ -146,6 +157,8 @@ class SelfAttention(nn.Module):
         attn_weights = self.softmax(self.linear2(torch.tanh(self.linear1(x))))
         weighted_input = torch.mul(x, attn_weights)
         return weighted_input
+
+
 class CNNClassifier(nn.Module):
     def __init__(self, vocab_size, embedding_dim, num_classes, seq_length, bio_feature_dim):
         super(CNNClassifier, self).__init__()
@@ -153,31 +166,41 @@ class CNNClassifier(nn.Module):
         self.conv1 = nn.Conv1d(1, 64, kernel_size=(2,4))
         self.conv2 = nn.Conv1d(64, 64, kernel_size=(2,4))
         self.conv3 = nn.Conv1d(64, 64, kernel_size=(2,4)) 
+
         self.conv_bio1 = nn.Conv1d(1, 64, kernel_size=(1,5))
-        self.conv_bio2 = nn.Conv1d(64, 64, kernel_size=(1,11))
+        self.conv_bio2 = nn.Conv1d(64, 64, kernel_size=(1,7))
         self.conv_bio3 = nn.Conv1d(64, 64, kernel_size=(1,17))
+
         self.seq_length = seq_length
         self.bio_feature_dim = bio_feature_dim
+
         self.fc_seq = nn.Linear(64 * (seq_length - 9), 512)
-        self.fc_bio = nn.Linear(64 * (bio_feature_dim - 30), 512)  
+        self.fc_bio = nn.Linear(64 * (bio_feature_dim - 26), 512)  
+
         self.attn_seq = SelfAttention(512, attn_hidden_dim) 
         self.attn_bio = SelfAttention(512, attn_hidden_dim)  
         self.attn_combined = SelfAttention(1024, attn_hidden_dim) 
+
         self.fc_final = nn.Linear(1024, num_classes)  
         self.dropout = nn.Dropout(0.5)
+
 
     def forward(self, x, bio_features):
         x = nn.functional.relu(self.conv1(x))
         x = nn.functional.relu(self.conv3(x))  
         x = nn.functional.relu(self.conv2(x))
-        x = x.view(x.size(0), -1) 
+        x = x.view(x.size(0), -1)
+
         bio_features = bio_features.unsqueeze(1)  
         bio_features = nn.functional.relu(self.conv_bio1(bio_features))
         bio_features = nn.functional.relu(self.conv_bio2(bio_features))
         bio_features = nn.functional.relu(self.conv_bio3(bio_features))
         bio_features = bio_features.view(bio_features.size(0), -1) 
+
+
         x_seq = nn.functional.relu(self.fc_seq(x))
         x_bio = nn.functional.relu(self.fc_bio(bio_features))
+
         x_seq_attended = self.attn_seq(x_seq)
         x_bio_attended = self.attn_bio(x_bio)
         x_combined = torch.cat((x_seq_attended, x_bio_attended), dim=1)
@@ -187,6 +210,7 @@ class CNNClassifier(nn.Module):
         x = self.fc_final(x)    
         probabilities = torch.softmax(x, dim=1)
         return x
+
 if __name__ == '__main__':
     dataselect = DataSelect()
     seq_selected,type_selected = dataselect.count_class_num(1)
@@ -195,21 +219,31 @@ if __name__ == '__main__':
     seq_filled = repeatsencoder.fill_repeats()
     X2 = seq_filled
 
-    # 用四聚体作为特征
     repeatfeature = RepeatFeature()
     repeatfeature.read_data(1)
     X1 = repeatfeature.prepare_data()
+
     repeatencoder = RepeatEncoder(seq_selected)
     # 2: 四通道编码
     X2 = repeatencoder.repeats_onehot_encoder()
+    
     X1.reset_index(drop=True, inplace=True)
     bio_features = X1
-    bio_feature_dim = 2082
+    bio_feature_dim = 2082  
     typeencoder = TypeEncoder(type_selected)
     Y = typeencoder.encode_type_3(1)
     Y_df = pd.DataFrame(Y, columns=['Y'])
-    type_selected_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
-    class_names = type_selected_big
+    type_selected_big = ['I-A', 'I-B', 'I-C', 'I-D', 'I-E', 'I-F', 'I-G', 'I-U', 'II-A', 'II-C', 'V-A']
+    type_selected_small = ['II-B', 'III-C', 'IV-A1', 'IV-A2', 'IV-A3', 'IV-D', 'IV-E', 'V-B1', 'V-B2', 'V-F1', 'V-F2', 'V-F3', 'V-K', 'VI-A',' VI-B1', 'VI-B2', 'VI-C', 'VI-D']
+
+    type_selected_all =  ['I-A','I-B', 'I-C', 'I-D','I-E', 'I-F','I-G','I-U',
+            'II-A','II-B','II-C',
+             'III-C',
+             'IV-A1','IV-A2','IV-A3','IV-D','IV-E',
+             'V-A','V-B1','V-B2','V-F1','V-F2','V-F3','V-K',
+             'VI-A', 'VI-B1','VI-B2','VI-C','VI-D'
+            ]
+    class_names = type_selected_big         
 
     embedding_dim = 64
     vocab_size = 5
@@ -226,4 +260,8 @@ if __name__ == '__main__':
     model = model.to(device)
     trainer = CNNTrainer(model, optimizer,class_names, device)
     trainer.train(train_dataloader, test_dataloader)
+
+
+
+
  

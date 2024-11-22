@@ -64,11 +64,31 @@ class RepeatFeature(object):
         self.can_kmer = can_kmer
 
     def prepare_data(self):
+
         self.generate_canonical_kmer()
         X = pd.DataFrame([dict(zip(self.can_kmer, np.zeros(len(self.can_kmer))))] + [self.count_kmer(x) for x in
                                                                                      self.data['Seq']]).fillna(0)
         X = X.iloc[1:]
+        # X = X.iloc[:, :512]   
+        
+        
         X['Length'] = [len(x) for x in self.data['Seq']]
         X['GC'] = [(x.count('G') + x.count('C')) / len(x) for x in self.data['Seq']]
-        X = X.iloc[:, :2082]   
+        X = X.iloc[:, :2082]  
         return  X
+
+    def prepare_data_forpre(self,filepath):
+        df = pd.read_excel(filepath)
+        self.data['Seq'] = df['Repeats'].astype(str).str.strip().tolist()
+
+        self.generate_canonical_kmer()
+        X = pd.DataFrame([dict(zip(self.can_kmer, np.zeros(len(self.can_kmer))))] + [self.count_kmer(x) for x in
+                                                                                    self.data['Seq']]).fillna(0)
+        X = X.iloc[1:]
+        # X = X.iloc[:, :512]   
+        X = X.iloc[:, :2080]  
+        
+        X['Length'] = [len(x) for x in self.data['Seq']]
+        X['GC'] = [(x.count('G') + x.count('C')) / len(x) for x in self.data['Seq']]
+        return  X
+
