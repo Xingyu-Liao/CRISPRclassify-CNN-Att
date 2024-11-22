@@ -39,7 +39,7 @@ if __name__ == '__main__':
     repeatencoder = RepeatEncoder(seq_selected)
     X2_small = repeatencoder.repeats_onehot_encoder()
     typeencoder = TypeEncoder(type_selected_small)
-    type_small = ['VI-A','V-K','II-B','V-F1','V-F2','VI-D','V-B1','VI-B2','VI-B1','IV-A3','I-U']
+    type_small = ['II-B', 'III-C', 'IV-A1', 'IV-A2', 'IV-A3', 'IV-D', 'IV-E', 'V-B1', 'V-B2', 'V-F1', 'V-F2', 'V-F3', 'V-K', 'VI-A',' VI-B1', 'VI-B2', 'VI-C', 'VI-D']
     Y_small = typeencoder.encode_type_3(0)
     for i in range(len(Y_small)):
         Y_small[i] = Y_small[i] + 11
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     X2_big = repeatencoder.repeats_onehot_encoder()
     typeencoder = TypeEncoder(type_selected_big)
     Y_big = typeencoder.encode_type_3(1)
-    type_big = ['I-E','I-C','II-A','I-F','I-G','V-A','II-C','I-D','I-B','III-A','I-A']
+    type_big = ['I-A', 'I-B', 'I-C', 'I-D', 'I-E', 'I-F', 'I-G', 'I-U', 'II-A', 'II-C', 'V-A']
     x_train_big, x_temp_big, y_train_big, y_temp_big,bio_features_train_big,bio_features_test_big = train_test_split(X2_big, Y_big, bio_features_big,test_size=0.5,random_state=15)
     test_dataset_big = MyDataset(x_temp_big, bio_features_test_big, y_temp_big)
     concat_dataset = ConcatDataset([test_dataset_big, test_dataset_small])
@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     embedding_dim = 64
     vocab_size = 5
-    num_classes_small = 11
+    num_classes_small = 18
     num_classes_big = 11
     seq_length = 48
     bio_feature_dim = 2082
@@ -77,12 +77,8 @@ if __name__ == '__main__':
 
     cnn_model.load_state_dict(cnn_model_state_dict)
     cnn_2_model.load_state_dict(cnn_2_model_state_dict)
-
-
     cnn_model.eval()
     cnn_2_model.eval()
-
-
     predictions_cnn = []
     predictions_cnn_2 = []
 
@@ -100,7 +96,7 @@ if __name__ == '__main__':
     bio_features_combined = np.concatenate((bio_features_test_big, bio_features_test_small),axis=0)
 
     X_train_stacked, X_test_stacked, y_train_stacked, y_test_stacked = train_test_split(
-        np.concatenate((bio_features_combined, new_features), axis=1), y_temp_combined, test_size=0.5 , random_state = 16)
+        np.concatenate((bio_features_combined, new_features), axis=1), y_temp_combined, test_size=0.5 , random_state = 15)
 
     # 加载模型
     loaded_model = joblib.load('CRISPRclassify_CNN_Att.pkl')
@@ -124,15 +120,15 @@ if __name__ == '__main__':
     print(report)
 
     auc_per_class = []
-    for class_idx in range(22):
+    for class_idx in range(29):
         y_true_class = [1 if label == class_idx else 0 for label in y_test_stacked]
         proba_predictions_class = proba_predictions[:, class_idx]
         auc_class = roc_auc_score(y_true_class, proba_predictions_class)
         auc_per_class.append(auc_class)
     acc_per_class = []
-    for class_idx in range(22):
+    for class_idx in range(29):
         final_predictions_class = [1 if label == class_idx else 0 for label in y_test_stacked]
         y_true_class = [1 if label == class_idx else 0 for label in final_predictions]
         acc_class = accuracy_score(y_true_class, final_predictions_class)
         acc_per_class.append(acc_class)
-
+    print(type_big+type_small)
