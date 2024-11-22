@@ -38,7 +38,7 @@ CRISPRclassify-CNN-Att is a deep learning-based method that utilizes Convolution
   
     > [!NOTE]
     >
-    > Due to file size limitations, we have stored the files `cnn_att_large.pth`,`cnn_att_less.pth`,and`CRISPRclassify_CNN_Att.pkl` at the following link: [Google Drive Folder](https://drive.google.com/drive/folders/1G5v5eQX1lXrIqmJpp34Kwi0fw1SqvtLe?usp=sharing).
+    > Due to file size limitations, we have stored the files `cnn_att_large.pth`,`cnn_att_less.pth`,and`CRISPRclassify_CNN_Att.pkl` at the following link: [Google Drive Folder](https://drive.google.com/drive/folders/1KZ3Rv67fmHcVllDwo0cS1rGbncVB8r2y?usp=sharing).
   
   - test.py : model testing
   
